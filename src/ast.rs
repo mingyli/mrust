@@ -9,26 +9,38 @@ pub trait Parse<T> {
 }
 
 #[derive(Debug)]
-pub struct Program(FunctionDeclaration);
+pub struct Program {
+    pub functions: Vec<FunctionDeclaration>,
+}
 
 #[derive(Debug)]
-struct FunctionDeclaration(String, Vec<Statement>);
+pub struct FunctionDeclaration {
+    pub name: String,
+    // TODO: pub parameters: Vec<Parameter>,
+    pub return_type: String, // TODO: Raise to a type.
+    pub statements: Vec<Statement>,
+}
 
 #[derive(Debug)]
-enum Statement {
+pub enum Statement {
+    Expression(Expression),
     Assignment(String, Expression),
 }
 
 #[derive(Debug)]
-struct Expression(i64);
+pub struct Expression(pub i64);
 
 impl Parse<Program> for Program {
     fn parse<I>(tokens: &mut Peekable<I>) -> Program
     where
         I: Iterator<Item = Token>,
     {
-        let function_declaration = FunctionDeclaration::parse(tokens);
-        Program(function_declaration)
+        let mut functions = vec![];
+        while tokens.peek().is_some() {
+            let function_declaration = FunctionDeclaration::parse(tokens);
+            functions.push(function_declaration);
+        }
+        Program { functions }
     }
 }
 
@@ -43,11 +55,33 @@ impl Parse<FunctionDeclaration> for FunctionDeclaration {
             _ => unreachable!(),
         };
         assert_eq!(tokens.next(), Some(Token::LeftParen));
+        // TODO: Parameters.
         assert_eq!(tokens.next(), Some(Token::RightParen));
+
+        let return_type = if tokens.peek() == Some(&Token::Arrow) {
+            assert_eq!(tokens.next(), Some(Token::Arrow));
+            match tokens.next().unwrap() {
+                Token::Identifier(name) => name,
+                _ => unreachable!(),
+            }
+        } else {
+            "void".to_string()
+        };
+
         assert_eq!(tokens.next(), Some(Token::LeftCurly));
-        let statement = Statement::parse(tokens);
+        let mut statements = vec![];
+
+        // TODO: This does not terminate if at end of iterator.
+        while tokens.peek() != Some(&Token::RightCurly) {
+            let statement = Statement::parse(tokens);
+            statements.push(statement);
+        }
         assert_eq!(tokens.next(), Some(Token::RightCurly));
-        FunctionDeclaration(name, vec![statement])
+        FunctionDeclaration {
+            name,
+            return_type,
+            statements,
+        }
     }
 }
 
@@ -56,17 +90,22 @@ impl Parse<Statement> for Statement {
     where
         I: Iterator<Item = Token>,
     {
-        assert_eq!(tokens.next(), Some(Token::Let));
-        let name = match tokens.next().unwrap() {
-            Token::Identifier(name) => name,
-            _ => unreachable!(),
-        };
-        assert_eq!(tokens.next(), Some(Token::Colon));
-        assert_eq!(tokens.next(), Some(Token::Identifier("i64".to_string())));
-        assert_eq!(tokens.next(), Some(Token::Equal));
-        let expression = Expression::parse(tokens);
-        assert_eq!(tokens.next(), Some(Token::Semicolon));
-        Statement::Assignment(name, expression)
+        if tokens.peek() == Some(&Token::Let) {
+            assert_eq!(tokens.next(), Some(Token::Let));
+            let name = match tokens.next().unwrap() {
+                Token::Identifier(name) => name,
+                _ => unreachable!(),
+            };
+            assert_eq!(tokens.next(), Some(Token::Colon));
+            assert_eq!(tokens.next(), Some(Token::Identifier("i64".to_string())));
+            assert_eq!(tokens.next(), Some(Token::Equal));
+            let expression = Expression::parse(tokens);
+            assert_eq!(tokens.next(), Some(Token::Semicolon));
+            Statement::Assignment(name, expression)
+        } else {
+            let expression = Expression::parse(tokens);
+            Statement::Expression(expression)
+        }
     }
 }
 
