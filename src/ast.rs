@@ -2,8 +2,8 @@ use std::iter::{Iterator, Peekable};
 
 use crate::token::Token;
 
-pub trait Parse<T> {
-    fn parse<I>(tokens: &mut Peekable<I>) -> T
+pub trait Parse {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
     where
         I: Iterator<Item = Token>;
 }
@@ -28,10 +28,18 @@ pub enum Statement {
 }
 
 #[derive(Debug)]
-pub struct Expression(pub i64);
+pub enum Expression {
+    IntLiteral(u64),
+    Unary(UnaryOperator, Box<Expression>),
+}
 
-impl Parse<Program> for Program {
-    fn parse<I>(tokens: &mut Peekable<I>) -> Program
+#[derive(Debug)]
+pub enum UnaryOperator {
+    Negation,
+}
+
+impl Parse for Program {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
     where
         I: Iterator<Item = Token>,
     {
@@ -44,8 +52,8 @@ impl Parse<Program> for Program {
     }
 }
 
-impl Parse<FunctionDeclaration> for FunctionDeclaration {
-    fn parse<I>(tokens: &mut Peekable<I>) -> FunctionDeclaration
+impl Parse for FunctionDeclaration {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
     where
         I: Iterator<Item = Token>,
     {
@@ -85,8 +93,8 @@ impl Parse<FunctionDeclaration> for FunctionDeclaration {
     }
 }
 
-impl Parse<Statement> for Statement {
-    fn parse<I>(tokens: &mut Peekable<I>) -> Statement
+impl Parse for Statement {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
     where
         I: Iterator<Item = Token>,
     {
@@ -109,15 +117,31 @@ impl Parse<Statement> for Statement {
     }
 }
 
-impl Parse<Expression> for Expression {
-    fn parse<I>(tokens: &mut Peekable<I>) -> Expression
+impl Parse for Expression {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
     where
         I: Iterator<Item = Token>,
     {
-        let value = match tokens.next().unwrap() {
-            Token::Number(value) => value,
+        match tokens.peek().unwrap().clone() {
+            Token::Number(value) => {
+                assert_eq!(tokens.next(), Some(Token::Number(value)));
+                Expression::IntLiteral(value)
+            }
+            Token::Minus => Expression::Unary(
+                UnaryOperator::parse(tokens),
+                Box::new(Expression::parse(tokens)),
+            ),
             _ => unreachable!(),
-        };
-        Expression(value)
+        }
+    }
+}
+
+impl Parse for UnaryOperator {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
+    where
+        I: Iterator<Item = Token>,
+    {
+        assert_eq!(tokens.next(), Some(Token::Minus));
+        UnaryOperator::Negation
     }
 }

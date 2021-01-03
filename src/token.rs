@@ -1,6 +1,6 @@
 use logos::Logos;
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Clone, Debug, PartialEq)]
 pub enum Token {
     #[token("fn")]
     Fn,
@@ -18,6 +18,8 @@ pub enum Token {
     Comma,
     #[token("+")]
     Plus,
+    #[token("-")]
+    Minus,
     #[token("=")]
     Equal,
     #[token(":")]
@@ -29,7 +31,7 @@ pub enum Token {
     #[regex(r"[a-zA-Z]\w*", |lex| lex.slice().to_string())]
     Identifier(String),
     #[regex(r"[0-9]+", |lex| lex.slice().parse())]
-    Number(i64),
+    Number(u64),
 
     #[error]
     #[regex(r"[ \t\n]+", logos::skip)]

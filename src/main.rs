@@ -27,13 +27,16 @@ fn main() {
     "#;
     let source = r#"
     fn foo() -> i64 {
-        let x: i64 = 7;
+        let x: i64 = -7;
         4
     }
 
-    fn main() {
-        let x: i64 = 5;
+    fn bar() {}
+
+    fn main() -> i64 {
+        let x: i64 = -5;
         let y: i64 = 6;
+        -9
     }
     "#;
     let tokens: Vec<Token> = Token::lexer(source).collect();

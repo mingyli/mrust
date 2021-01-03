@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 use inkwell::{builder::Builder, context::Context, module::Module, values::BasicValueEnum};
 
@@ -69,6 +68,10 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
                 }
             }
         }
+        // TODO: Special case? Or can be handled by compound statements?
+        if function_declaration.statements.is_empty() {
+            self.builder.build_return(None);
+        }
         None
     }
 
@@ -90,11 +93,21 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
     }
 
     fn visit_expression(&mut self, expression: &Expression) -> Option<BasicValueEnum<'ctx>> {
-        Some(
-            self.context
-                .i64_type()
-                .const_int(expression.0.try_into().unwrap(), false)
-                .into(),
-        )
+        match expression {
+            Expression::IntLiteral(value) => {
+                Some(self.context.i64_type().const_int(*value, false).into())
+            }
+            Expression::Unary(operator, expression) => match operator {
+                UnaryOperator::Negation => {
+                    let value = self.visit_expression(expression);
+                    let value = value.unwrap();
+                    Some(
+                        self.builder
+                            .build_int_neg(value.into_int_value(), "negate")
+                            .into(),
+                    )
+                }
+            },
+        }
     }
 }
