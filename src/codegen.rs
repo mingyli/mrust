@@ -28,6 +28,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     pub fn finish(self) {
+        eprintln!("Writing to rao.ll");
         self.module.print_to_file("rao.ll").unwrap();
     }
 }
