@@ -20,6 +20,8 @@ pub enum Token {
     Plus,
     #[token("-")]
     Minus,
+    #[token("*")]
+    Multiply,
     #[token("=")]
     Equal,
     #[token(":")]

@@ -1,12 +1,16 @@
+#![feature(peekable_next_if)]
+
 use inkwell::context::Context;
 use logos::Logos;
 
 mod ast;
 mod codegen;
+mod parse;
 mod token;
 mod visit;
 
-use crate::ast::{Parse, Program};
+use crate::ast::Program;
+use crate::parse::Parse;
 use crate::token::Token;
 use crate::visit::Visitor;
 
@@ -27,7 +31,7 @@ fn main() {
     "#;
     let source = r#"
     fn foo() -> i64 {
-        let x: i64 = -7;
+        let x: i64 = 7;
         4
     }
 
@@ -36,7 +40,7 @@ fn main() {
     fn main() -> i64 {
         let x: i64 = -5;
         let y: i64 = 6;
-        -9
+        2 * 4 - ((3) + 9) * 1
     }
     "#;
     let tokens: Vec<Token> = Token::lexer(source).collect();

@@ -97,17 +97,24 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
             Expression::IntLiteral(value) => {
                 Some(self.context.i64_type().const_int(*value, false).into())
             }
-            Expression::Unary(operator, expression) => match operator {
-                UnaryOperator::Negation => {
-                    let value = self.visit_expression(expression);
-                    let value = value.unwrap();
-                    Some(
-                        self.builder
-                            .build_int_neg(value.into_int_value(), "negate")
-                            .into(),
-                    )
-                }
-            },
+            Expression::Unary(operator, expression) => {
+                let value = self.visit_expression(expression).unwrap().into_int_value();
+                let result = match operator {
+                    Operator::Minus => self.builder.build_int_neg(value, "neg"),
+                    _ => unreachable!(),
+                };
+                Some(result.into())
+            }
+            Expression::Binary(operator, left, right) => {
+                let left = self.visit_expression(left).unwrap().into_int_value();
+                let right = self.visit_expression(right).unwrap().into_int_value();
+                let result = match operator {
+                    Operator::Plus => self.builder.build_int_add(left, right, "add"),
+                    Operator::Minus => self.builder.build_int_sub(left, right, "sub"),
+                    Operator::Times => self.builder.build_int_mul(left, right, "mul"),
+                };
+                Some(result.into())
+            }
         }
     }
 }
