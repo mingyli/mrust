@@ -40,10 +40,7 @@ impl Parse for FunctionDeclaration {
         // TODO: Parameters.
         assert_eq!(tokens.next(), Some(Token::RightParen));
 
-        let return_type = if tokens
-            .next_if(|token| matches!(token, Token::Arrow))
-            .is_some()
-        {
+        let return_type = if tokens.next_if_eq(&Token::Arrow).is_some() {
             match tokens.next().unwrap() {
                 Token::Identifier(name) => name,
                 _ => unreachable!(),
@@ -66,10 +63,7 @@ impl Parse for Statement {
     where
         I: Iterator<Item = Token>,
     {
-        if tokens
-            .next_if(|token| matches!(token, Token::Let))
-            .is_some()
-        {
+        if tokens.next_if_eq(&Token::Let).is_some() {
             let name = match tokens.next().unwrap() {
                 Token::Identifier(name) => name,
                 _ => unreachable!(),
@@ -82,10 +76,7 @@ impl Parse for Statement {
             Statement::Assignment(name, expression)
         } else {
             let expression = Expression::parse(tokens);
-            if tokens
-                .next_if(|token| matches!(token, Token::Semicolon))
-                .is_some()
-            {
+            if tokens.next_if_eq(&Token::Semicolon).is_some() {
                 Statement::ExpressionStatement(expression)
             } else {
                 Statement::Expression(expression)
@@ -129,7 +120,7 @@ impl Parse for Expression {
             I: Iterator<Item = Token>,
         {
             let mut expression = parse_factor(tokens);
-            while let Some(token) = tokens.next_if(|token| matches!(token, Token::Multiply)) {
+            while let Some(token) = tokens.next_if_eq(&Token::Multiply) {
                 let operator = Operator::try_from(token).unwrap();
                 let next_factor = parse_factor(tokens);
                 expression =
