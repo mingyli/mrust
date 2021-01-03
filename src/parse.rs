@@ -107,13 +107,14 @@ impl Parse for Expression {
                     assert_eq!(tokens.next(), Some(Token::RightParen));
                     expression
                 }
-                // TODO: All unary operators.
+                // TODO: More unary operators.
                 token @ Token::Minus => {
                     let operator = Operator::try_from(token).unwrap();
                     let factor = parse_factor(tokens);
                     Expression::Unary(operator, Box::new(factor))
                 }
                 Token::Number(value) => Expression::IntLiteral(value),
+                Token::Identifier(name) => Expression::Variable(name),
                 _ => unreachable!(),
             }
         }

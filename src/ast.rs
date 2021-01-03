@@ -24,6 +24,7 @@ pub enum Statement {
 #[derive(Debug)]
 pub enum Expression {
     IntLiteral(u64),
+    Variable(String),
     Unary(Operator, Box<Expression>),
     Binary(Operator, Box<Expression>, Box<Expression>),
 }

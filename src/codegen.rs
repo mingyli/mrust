@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use inkwell::{builder::Builder, context::Context, module::Module, values::BasicValueEnum};
+use inkwell::{
+    builder::Builder,
+    context::Context,
+    module::Module,
+    values::{BasicValueEnum, PointerValue},
+};
 
 use crate::ast::*;
 use crate::visit::Visitor;
@@ -9,7 +14,7 @@ pub struct CodeGenerator<'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
-    named_values: HashMap<String, BasicValueEnum<'ctx>>,
+    named_values: HashMap<String, PointerValue<'ctx>>,
 }
 
 impl<'ctx> CodeGenerator<'ctx> {
@@ -85,7 +90,7 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
                     let int_type = self.context.i64_type();
                     let pointer = self.builder.build_alloca(int_type, name);
                     self.builder.build_store(pointer, value);
-                    self.named_values.insert(name.to_string(), value);
+                    self.named_values.insert(name.to_string(), pointer);
                 }
                 None
             }
@@ -97,6 +102,13 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
             Expression::IntLiteral(value) => {
                 Some(self.context.i64_type().const_int(*value, false).into())
             }
+            Expression::Variable(name) => match self.named_values.get(name) {
+                Some(variable) => {
+                    let value = self.builder.build_load(*variable, "load");
+                    Some(value)
+                }
+                None => unreachable!(),
+            },
             Expression::Unary(operator, expression) => {
                 let value = self.visit_expression(expression).unwrap().into_int_value();
                 let result = match operator {

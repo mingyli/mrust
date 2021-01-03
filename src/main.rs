@@ -39,8 +39,8 @@ fn main() {
 
     fn main() -> i64 {
         let x: i64 = -5;
-        let y: i64 = 6;
-        2 * 4 - ((3) + 9) * 1
+        let y: i64 = 9;
+        2 * x - ((3) + y) * 1
     }
     "#;
     let tokens: Vec<Token> = Token::lexer(source).collect();
