@@ -8,6 +8,7 @@ pub trait Visitor {
         &mut self,
         function_declaration: &FunctionDeclaration,
     ) -> Self::Value;
+    fn visit_block_expression(&mut self, block_expression: &BlockExpression) -> Self::Value;
     fn visit_statement(&mut self, statement: &Statement) -> Self::Value;
     fn visit_expression(&mut self, expression: &Expression) -> Self::Value;
 }

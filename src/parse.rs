@@ -40,8 +40,10 @@ impl Parse for FunctionDeclaration {
         // TODO: Parameters.
         assert_eq!(tokens.next(), Some(Token::RightParen));
 
-        let return_type = if tokens.peek() == Some(&Token::Arrow) {
-            assert_eq!(tokens.next(), Some(Token::Arrow));
+        let return_type = if tokens
+            .next_if(|token| matches!(token, Token::Arrow))
+            .is_some()
+        {
             match tokens.next().unwrap() {
                 Token::Identifier(name) => name,
                 _ => unreachable!(),
@@ -50,19 +52,11 @@ impl Parse for FunctionDeclaration {
             "void".to_string()
         };
 
-        assert_eq!(tokens.next(), Some(Token::LeftCurly));
-        let mut statements = vec![];
-
-        // TODO: This does not terminate if at end of iterator.
-        while tokens.peek() != Some(&Token::RightCurly) {
-            let statement = Statement::parse(tokens);
-            statements.push(statement);
-        }
-        assert_eq!(tokens.next(), Some(Token::RightCurly));
+        let block = BlockExpression::parse(tokens);
         FunctionDeclaration {
             name,
             return_type,
-            statements,
+            block,
         }
     }
 }
@@ -72,8 +66,10 @@ impl Parse for Statement {
     where
         I: Iterator<Item = Token>,
     {
-        if tokens.peek() == Some(&Token::Let) {
-            assert_eq!(tokens.next(), Some(Token::Let));
+        if tokens
+            .next_if(|token| matches!(token, Token::Let))
+            .is_some()
+        {
             let name = match tokens.next().unwrap() {
                 Token::Identifier(name) => name,
                 _ => unreachable!(),
@@ -86,7 +82,14 @@ impl Parse for Statement {
             Statement::Assignment(name, expression)
         } else {
             let expression = Expression::parse(tokens);
-            Statement::Expression(expression)
+            if tokens
+                .next_if(|token| matches!(token, Token::Semicolon))
+                .is_some()
+            {
+                Statement::ExpressionStatement(expression)
+            } else {
+                Statement::Expression(expression)
+            }
         }
     }
 }
@@ -100,16 +103,18 @@ impl Parse for Expression {
         where
             I: Iterator<Item = Token>,
         {
-            let token = tokens.next().unwrap();
-            match token {
+            if tokens.peek() == Some(&Token::LeftCurly) {
+                return Expression::BlockExpression(BlockExpression::parse(tokens));
+            }
+
+            match tokens.next().unwrap() {
                 Token::LeftParen => {
                     let expression = Expression::parse(tokens);
                     assert_eq!(tokens.next(), Some(Token::RightParen));
                     expression
                 }
-                // TODO: More unary operators.
-                token @ Token::Minus => {
-                    let operator = Operator::try_from(token).unwrap();
+                Token::Minus => {
+                    let operator = Operator::try_from(Token::Minus).unwrap();
                     let factor = parse_factor(tokens);
                     Expression::Unary(operator, Box::new(factor))
                 }
@@ -150,5 +155,22 @@ impl Parse for Expression {
         }
 
         parse_expression(tokens)
+    }
+}
+
+impl Parse for BlockExpression {
+    fn parse<I>(tokens: &mut Peekable<I>) -> Self
+    where
+        I: Iterator<Item = Token>,
+    {
+        assert_eq!(tokens.next(), Some(Token::LeftCurly));
+        let mut statements = vec![];
+        // TODO: This does not terminate if already at end of iterator.
+        while tokens.peek() != Some(&Token::RightCurly) {
+            let statement = Statement::parse(tokens);
+            statements.push(statement);
+        }
+        assert_eq!(tokens.next(), Some(Token::RightCurly));
+        BlockExpression { statements }
     }
 }

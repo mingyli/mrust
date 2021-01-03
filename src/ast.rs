@@ -12,12 +12,16 @@ pub struct FunctionDeclaration {
     pub name: String,
     // TODO: pub parameters: Vec<Parameter>,
     pub return_type: String, // TODO: Raise to a type.
-    pub statements: Vec<Statement>,
+    pub block: BlockExpression,
 }
 
 #[derive(Debug)]
 pub enum Statement {
     Expression(Expression),
+
+    // An expression statement is an expression terminated by a semicolon.
+    // It has a return value of ().
+    ExpressionStatement(Expression),
     Assignment(String, Expression),
 }
 
@@ -27,6 +31,13 @@ pub enum Expression {
     Variable(String),
     Unary(Operator, Box<Expression>),
     Binary(Operator, Box<Expression>, Box<Expression>),
+    BlockExpression(BlockExpression),
+}
+
+// TODO: Implement RAII or new label for block expressions.
+#[derive(Debug)]
+pub struct BlockExpression {
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug)]

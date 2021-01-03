@@ -57,32 +57,43 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
         let block = self.context.append_basic_block(fn_value, "entry");
         self.builder.position_at_end(block);
 
-        // The last statement is the return value.
-        use itertools::{Itertools, Position};
-        for statement in function_declaration.statements.iter().with_position() {
-            match statement {
-                Position::First(statement) | Position::Middle(statement) => {
-                    self.visit_statement(statement);
-                }
-                Position::Last(statement) | Position::Only(statement) => {
-                    let value = self.visit_statement(statement);
-                    match value {
-                        Some(value) => self.builder.build_return(Some(&value)),
-                        None => self.builder.build_return(None),
-                    };
-                }
-            }
-        }
-        // TODO: Special case? Or can be handled by compound statements?
-        if function_declaration.statements.is_empty() {
+        let value = self.visit_block_expression(&function_declaration.block);
+        if let Some(value) = value {
+            self.builder.build_return(Some(&value));
+        } else {
             self.builder.build_return(None);
         }
         None
     }
 
-    fn visit_statement(&mut self, statement: &Statement) -> Option<BasicValueEnum<'ctx>> {
+    fn visit_block_expression(&mut self, block_expression: &BlockExpression) -> Self::Value {
+        use itertools::{Itertools, Position};
+
+        if block_expression.statements.is_empty() {
+            return None;
+        }
+
+        // The last statement is the return value.
+        for statement in block_expression.statements.iter().with_position() {
+            match statement {
+                Position::First(statement) | Position::Middle(statement) => {
+                    self.visit_statement(statement);
+                }
+                Position::Last(statement) | Position::Only(statement) => {
+                    return self.visit_statement(statement);
+                }
+            }
+        }
+        unreachable!()
+    }
+
+    fn visit_statement(&mut self, statement: &Statement) -> Self::Value {
         match statement {
             Statement::Expression(expression) => self.visit_expression(expression),
+            Statement::ExpressionStatement(expression) => {
+                self.visit_expression(expression);
+                None
+            }
             Statement::Assignment(name, expression) => {
                 let value = self.visit_expression(expression);
                 if let Some(value) = value {
@@ -97,7 +108,7 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
         }
     }
 
-    fn visit_expression(&mut self, expression: &Expression) -> Option<BasicValueEnum<'ctx>> {
+    fn visit_expression(&mut self, expression: &Expression) -> Self::Value {
         match expression {
             Expression::IntLiteral(value) => {
                 Some(self.context.i64_type().const_int(*value, false).into())
@@ -109,6 +120,9 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
                 }
                 None => unreachable!(),
             },
+            Expression::BlockExpression(block_expression) => {
+                self.visit_block_expression(block_expression)
+            }
             Expression::Unary(operator, expression) => {
                 let value = self.visit_expression(expression).unwrap().into_int_value();
                 let result = match operator {
