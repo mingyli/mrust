@@ -6,11 +6,11 @@ A compiler for a subset of Rust targeting LLVM IR.
 
 Notable features include:
 
-[ ] RAII + move semantics
-[ ] borrow checker
-[ ] mutability checker
-[ ] sum types / tagged unions
-[ ] pattern matching
+- [ ] RAII + move semantics
+- [ ] borrow checker
+- [ ] mutability checker
+- [ ] sum types / tagged unions
+- [ ] pattern matching
 
 ## Setup
 
