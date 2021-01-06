@@ -4,10 +4,11 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    values::{BasicValueEnum, PointerValue},
+    values::{BasicValueEnum, FunctionValue, PointerValue},
 };
 
 use crate::ast::*;
+use crate::types::Type;
 use crate::visit::Visitor;
 
 pub struct CodeGenerator<'ctx> {
@@ -15,21 +16,23 @@ pub struct CodeGenerator<'ctx> {
     module: Module<'ctx>,
     builder: Builder<'ctx>,
     named_values: HashMap<String, PointerValue<'ctx>>,
+    functions: HashMap<String, FunctionValue<'ctx>>,
 }
 
 impl<'ctx> CodeGenerator<'ctx> {
     pub fn new(context: &'ctx Context) -> CodeGenerator<'ctx> {
         CodeGenerator {
             context,
-            module: context.create_module("rao"),
+            module: context.create_module("mrust"),
             builder: context.create_builder(),
             named_values: HashMap::new(),
+            functions: HashMap::new(),
         }
     }
 
     pub fn finish(self) {
-        eprintln!("Writing to rao.ll");
-        self.module.print_to_file("rao.ll").unwrap();
+        eprintln!("Writing to mrust.ll");
+        self.module.print_to_file("mrust.ll").unwrap();
     }
 }
 
@@ -45,16 +48,17 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
 
     fn visit_function_declaration(
         &mut self,
-        function_declaration: &FunctionDeclaration,
+        function_declaration: &FunctionDefinition,
     ) -> Self::Value {
-        let fn_type = if function_declaration.return_type == "i64" {
-            self.context.i64_type().fn_type(&[], false)
-        } else {
-            self.context.void_type().fn_type(&[], false)
+        let fn_type = match function_declaration.return_type {
+            Type::Int => self.context.i64_type().fn_type(&[], false),
+            _ => self.context.void_type().fn_type(&[], false),
         };
         let fn_value = self
             .module
             .add_function(&function_declaration.name, fn_type, None);
+        self.functions
+            .insert(function_declaration.name.clone(), fn_value);
         let block = self.context.append_basic_block(fn_value, "entry");
         self.builder.position_at_end(block);
 
@@ -114,13 +118,18 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
             Expression::IntLiteral(value) => {
                 Some(self.context.i64_type().const_int(*value, false).into())
             }
-            Expression::Variable(name) => match self.named_values.get(name) {
-                Some(variable) => {
-                    let value = self.builder.build_load(*variable, "load");
-                    Some(value)
-                }
-                None => unreachable!(),
-            },
+            Expression::Variable(name) => {
+                let variable = self.named_values[name];
+                let value = self.builder.build_load(variable, "load");
+                Some(value)
+            }
+            Expression::FunctionCall(name, _args) => {
+                // TODO: Evaluate the expressions and pass them in.
+                let function = self.functions[name];
+                let return_value = self.builder.build_call(function, &[], name);
+                // TODO: Unwrap left instead.
+                return_value.try_as_basic_value().left()
+            }
             Expression::BlockExpression(block_expression) => {
                 self.visit_block_expression(block_expression)
             }
@@ -128,7 +137,7 @@ impl<'ctx> Visitor for CodeGenerator<'ctx> {
                 let value = self.visit_expression(expression).unwrap().into_int_value();
                 let result = match operator {
                     Operator::Minus => self.builder.build_int_neg(value, "neg"),
-                    _ => unreachable!(),
+                    _ => unimplemented!(),
                 };
                 Some(result.into())
             }

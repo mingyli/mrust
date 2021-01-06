@@ -1,24 +1,24 @@
 use std::convert::TryFrom;
 
 use crate::token::Token;
+use crate::types::Type;
 
 #[derive(Debug)]
 pub struct Program {
-    pub functions: Vec<FunctionDeclaration>,
+    pub functions: Vec<FunctionDefinition>,
 }
 
 #[derive(Debug)]
-pub struct FunctionDeclaration {
+pub struct FunctionDefinition {
     pub name: String,
-    // TODO: pub parameters: Vec<Parameter>,
-    pub return_type: String, // TODO: Raise to a type.
+    pub parameters: Vec<(String, Type)>,
+    pub return_type: Type,
     pub block: BlockExpression,
 }
 
 #[derive(Debug)]
 pub enum Statement {
     Expression(Expression),
-
     // An expression statement is an expression terminated by a semicolon.
     // It has a return value of ().
     ExpressionStatement(Expression),
@@ -29,6 +29,7 @@ pub enum Statement {
 pub enum Expression {
     IntLiteral(u64),
     Variable(String),
+    FunctionCall(String, Vec<Expression>),
     Unary(Operator, Box<Expression>),
     Binary(Operator, Box<Expression>, Box<Expression>),
     BlockExpression(BlockExpression),

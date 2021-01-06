@@ -6,7 +6,7 @@ pub trait Visitor {
     fn visit_program(&mut self, program: &Program) -> Self::Value;
     fn visit_function_declaration(
         &mut self,
-        function_declaration: &FunctionDeclaration,
+        function_declaration: &FunctionDefinition,
     ) -> Self::Value;
     fn visit_block_expression(&mut self, block_expression: &BlockExpression) -> Self::Value;
     fn visit_statement(&mut self, statement: &Statement) -> Self::Value;

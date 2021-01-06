@@ -8,6 +8,7 @@ mod ast;
 mod codegen;
 mod parse;
 mod token;
+mod types;
 mod visit;
 
 use crate::parse::Parser;

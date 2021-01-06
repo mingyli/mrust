@@ -7,6 +7,7 @@ use logos::Logos;
 
 use crate::ast::*;
 use crate::token::Token;
+use crate::types::Type;
 
 pub struct Parser;
 
@@ -109,14 +110,14 @@ impl Parse for Program {
     {
         let mut functions = vec![];
         while tokens.peek().is_some() {
-            let function_declaration = FunctionDeclaration::parse(tokens)?;
+            let function_declaration = FunctionDefinition::parse(tokens)?;
             functions.push(function_declaration);
         }
         Ok(Program { functions })
     }
 }
 
-impl Parse for FunctionDeclaration {
+impl Parse for FunctionDefinition {
     fn parse<I>(tokens: &mut Peekable<I>) -> Result<Self, ParseError>
     where
         I: Iterator<Item = Token>,
@@ -134,24 +135,27 @@ impl Parse for FunctionDeclaration {
         Parser::expect(tokens, Token::LeftParen)?;
         // TODO: Parameters.
         Parser::expect(tokens, Token::RightParen)?;
+        Parser::expect(tokens, Token::Arrow)?;
 
-        let return_type = if Parser::accept(tokens, Token::Arrow) {
-            match tokens.next().ok_or_else(ParseError::end_of_stream)? {
-                Token::Identifier(name) => name,
-                token => {
-                    return Err(ParseError::unexpected(
-                        Token::Identifier("_".to_string()),
-                        token,
-                    ))
-                }
+        let return_type = match tokens.next().ok_or_else(ParseError::end_of_stream)? {
+            Token::Identifier(name) => Type::from(name),
+            Token::LeftParen => {
+                // TODO: Support tuples as well.
+                Parser::expect(tokens, Token::RightParen)?;
+                Type::Unit
             }
-        } else {
-            "void".to_string()
+            token => {
+                return Err(ParseError::unexpected(
+                    Token::Identifier("_".to_string()),
+                    token,
+                ))
+            }
         };
 
         let block = BlockExpression::parse(tokens)?;
-        Ok(FunctionDeclaration {
+        Ok(FunctionDefinition {
             name,
+            parameters: vec![], // TODO
             return_type,
             block,
         })
@@ -215,7 +219,14 @@ impl Parse for Expression {
                     Ok(Expression::Unary(operator, Box::new(factor)))
                 }
                 Token::Number(value) => Ok(Expression::IntLiteral(value)),
-                Token::Identifier(name) => Ok(Expression::Variable(name)),
+                Token::Identifier(name) => {
+                    if Parser::accept(tokens, Token::LeftParen) {
+                        Parser::expect(tokens, Token::RightParen)?;
+                        Ok(Expression::FunctionCall(name, vec![]))
+                    } else {
+                        Ok(Expression::Variable(name))
+                    }
+                }
                 token => Err(ParseError::invalid(token)),
             }
         }
